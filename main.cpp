@@ -22,8 +22,25 @@ int main(int argc, char* argv[]) {
         cerr << "Resolve failed: " << gai_strerror(rc) << "\n";
         return 1;
     }
-
-
-
+    bool open = false;
+    int lastError = 0;
+    for (addrinfo* p = result ; p != nullptr ; p = p->ai_next) { // a hostname can be resolved to severall adresses result is head of linked list
+        int fd = socket(p->ai_family,p->ai_socktype,p->ai_protocol);// creates socket for example 192.168.1.1:80
+        if (fd == -1) continue;
+        if (connect(fd, p->ai_addr, p->ai_addrlen) == 0) {
+            open = true;
+        } else {
+            lastError = errno;
+        }
+        close(fd);
+        if (open) break;
+    }
+    freeaddrinfo(result);
+    if (open) {
+        cout << host << ":" << port << "is OPEN\n";
+    } else {
+        cout << host << ":" << port << " is CLOSED ("
+            << strerror(lastError) << ")\n";
+    }
     return 0;
 }
