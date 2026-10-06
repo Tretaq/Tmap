@@ -17,13 +17,39 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // s
     int fd = socket(AF_INET, SOCK_STREAM, 0);// AF_INET = IPv4 SOCK_STREAM = TCP 0 = default protocol
     // create a socket
     if (fd == -1) return PortState::Error;
+
     int flags = fcntl(fd, F_GETFL, 0); // we take the setting (flags) for this socket and in nex we do new ones
     fcntl(fd, F_SETFL, flags | O_NONBLOCK); // normally connect() and recv() stop running program till end of op after O_NONBLOCK they stop so if no conn there is ther will be an error nad prograam can do smth else
     // it returns immidiently and dont wait for handshake
     PortState result = PortState::Error;
 
-    int rc = connect(fd, (sockaddr*)&addr, sizeof(addr));
+    int rc = connect(fd, (sockaddr*)&addr, sizeof(addr)); //
 
+    if (rc == 0) {
+        result = PortState::Open;
+    } else if (errno == ECONNREFUSED) {
+        result = PortState::Closed;
+    } else if ( errno == EINPROGRESS) {
+        pollfd pfd{};
+        pfd.fd = fd;
+        pfd.events = POLLOUT;
+
+        int r = poll(&pfd, 1 , timeoutMS);
+        if (r == 0) {
+            result = PortState::Filtered;
+        } else if (r > 0){
+            int err = 0;
+            socklen_t len = sizeof(err);
+            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0) {
+                if (err == 0) result = PortState::Open;
+                else if (err == ECONNREFUSED) result = PortState::Closed;
+
+
+            }
+        }
+    }
+    close(fd);
+    return result;
 
 
 }
