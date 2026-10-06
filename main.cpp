@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
     hints.ai_family = AF_UNSPEC; // either ipv4 ipv6
     hints.ai_socktype = SOCK_STREAM; // tcp udp is sock_dgram
     addrinfo* result = nullptr; // pointer that shoud fill in addrinfo
-    int rc = getaddrinfo(host, port, &hints, &result);
-    if (rc != 0) {// swe check if no internet and typo in hostname
+    int rc = getaddrinfo(host, port, &hints, &result); // we check what ip is behind eg google.com
+    if (rc != 0) {// we check if no internet and typo in hostname
         cerr << "Resolve failed: " << gai_strerror(rc) << "\n";
         return 1;
     }
@@ -27,10 +27,10 @@ int main(int argc, char* argv[]) {
     for (addrinfo* p = result ; p != nullptr ; p = p->ai_next) { // a hostname can be resolved to severall adresses result is head of linked list
         int fd = socket(p->ai_family,p->ai_socktype,p->ai_protocol);// creates socket for example 192.168.1.1:80
         if (fd == -1) continue;
-        if (connect(fd, p->ai_addr, p->ai_addrlen) == 0) {
+        if (connect(fd, p->ai_addr, p->ai_addrlen) == 0) {// jeżeli połączenie działa
             open = true;
         } else {
-            lastError = errno;
+            lastError = errno; // errno = numer ostatniego błędu przechowywanego przez biblioteke standardową albo wywyołanie systemowe
         }
         close(fd);
         if (open) break;
@@ -39,8 +39,7 @@ int main(int argc, char* argv[]) {
     if (open) {
         cout << host << ":" << port << "is OPEN\n";
     } else {
-        cout << host << ":" << port << " is CLOSED ("
-            << strerror(lastError) << ")\n";
+        cout << host << ":" << port << " is CLOSED (" << strerror(lastError) << ")\n";
     }
     return 0;
 }
