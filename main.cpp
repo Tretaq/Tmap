@@ -4,7 +4,31 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <cstdint>
+#include <fcntl.h>// flags F_GETFL, F_SETFL, O_NONBLOCK
+#include <poll.h>// pollfd POLLOUT
 using namespace std;
+
+enum class PortState { Open, Closed, Filtered, Error };
+
+PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // sockaddr_in& base host addres
+    sockaddr_in addr = base;
+    addr.sin_port = htons(port);
+    int fd = socket(AF_INET, SOCK_STREAM, 0);// AF_INET = IPv4 SOCK_STREAM = TCP 0 = default protocol
+    // create a socket
+    if (fd == -1) return PortState::Error;
+    int flags = fcntl(fd, F_GETFL, 0); // we take the setting (flags) for this socket and in nex we do new ones
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK); // normally connect() and recv() stop running program till end of op after O_NONBLOCK they stop so if no conn there is ther will be an error nad prograam can do smth else
+    // it returns immidiently and dont wait for handshake
+    PortState result = PortState::Error;
+
+    int rc = connect(fd, (sockaddr*)&addr, sizeof(addr));
+
+
+
+}
+
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         cerr << "Usage: " << argv[0] << " <host> <port>\n";
