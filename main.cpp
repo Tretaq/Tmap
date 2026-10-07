@@ -9,6 +9,9 @@
 #include <poll.h>// pollfd POLLOUT
 using namespace std;
 
+
+// g++ main.cpp -o Tmap
+
 enum class PortState { Open, Closed, Filtered, Error };
 
 PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // sockaddr_in& base host addres
@@ -59,7 +62,26 @@ int main(int argc, char* argv[]) {
     if (argc != 2)
     {
         cerr << "Usage: " << argv[0] << " <host>\n";
+        return 1;
     }
+    addrinfo hints{};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    addrinfo* res = nullptr;
+    int rc = getaddrinfo(argv[1], nullptr, &hints, &res);
+    if (rc != 0) {
+        cerr << "Resolve failed: " << gai_strerror(rc) << "\n";
+        return 1;
+    }
+    sockaddr_in base = *(sockaddr_in*)res->ai_addr;
+    freeaddrinfo(res);
+    for (int port = 1; port <= 1024; ++port) {
+        if (scanPort(base, port, 1000) == PortState::Open) {
+            cout << "port " << port << " is OPEN\n";
+        }
+    }
+
     // if (argc != 3) {
     //     cerr << "Usage: " << argv[0] << " <host> <port>\n";
     //     return 1;
