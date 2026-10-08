@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <complex>
 #include <stdexcept>
 using namespace std;
 
@@ -76,7 +77,7 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // s
         pfd.fd = fd;
         pfd.events = POLLOUT;
 
-        int r = poll(&pfd, 1 , timeoutMS);
+        int r = poll(&pfd, 1 , timeoutMS);// check the response
         if (r == 0) {
             result = PortState::Filtered;
         } else if (r > 0){
@@ -94,24 +95,62 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // s
 
 
 int main(int argc, char* argv[]) {
+    string portSpec = "1-1024";
+    int timeoutMs = 1000;
+    string host;
+    vector<uint16_t> ports;
 
+    try {
+        for (int i = 1 ; i <= argc; ++i) {
+            string argument = argv[i];
+            if (argument == "-p" || argument == "-t") {
+                if (i + 1 >= argc) {
+                    throw invalid_argument(argument + " needs a value");
+                }
+                string value = argv[++i];
+                if (argument == "-p") {
+                    portSpec = value;
+                }
+                else {
+                    timeoutMs = toInt(value);
+                }
+            } else if (argument[0] == '-') {
+                throw invalid_argument("Unknown option: " + argument);
+            } else {
+                host = argument;
+            }
+        }
+        if (host.empty()) throw invalid_argument("missing host");
+        if (timeoutMs < 1) throw invalid_argument("timeout must be at least 1 ms");
+        ports = parsePorts(portSpec);
+    } catch (const exception& e) {
+        cerr << "Error: " << e.what() << "\n" << "Usage: " << argv[0] << " -p ports -t timeout_ms <host> \n";
+        return 1;
+    }
+    // -t = timeout -p = ports
     // if (argc != 2)
     // {
     //     cerr << "Usage: " << argv[0] << " <host>\n";
     //     return 1;
     // }
-    // addrinfo hints{}; // addrinfo = to typ który przchowuje teczke informacji o danym hoscie a hnints mówi co my tylko chcemy {} resetuje całą pamięć bez tego będzie miała losowe śmieci z pamięci bo nie bedzie zainicjonowana
-    // hints.ai_family = AF_INET; // only ipv4
-    // hints.ai_socktype = SOCK_STREAM; // tcp udp is sock_dgram
-    //
-    // addrinfo* res = nullptr; // pointer that shoud fill in addrinfo
-    // int rc = getaddrinfo(argv[1], nullptr, &hints, &res); // we check what ip is behind eg google.com
-    // if (rc != 0) { // check if no internet or typo in hostname
-    //     cerr << "Resolve failed: " << gai_strerror(rc) << "\n";
-    //     return 1;
-    // }
-    // sockaddr_in base = *(sockaddr_in*)res->ai_addr; // wskaźnik typu sockaddr* ponieważ wcześniej określiliśmy AF_INET (IPv4) rzutujemy na sockaddr_in* i pobieramy warość do zmiennej base
-    // freeaddrinfo(res); // zwalnia pamięć przydzieloną dla struktury res
+    addrinfo hints{}; // addrinfo = to typ który przchowuje teczke informacji o danym hoscie a hnints mówi co my tylko chcemy {} resetuje całą pamięć bez tego będzie miała losowe śmieci z pamięci bo nie bedzie zainicjonowana
+    hints.ai_family = AF_INET; // only ipv4
+    hints.ai_socktype = SOCK_STREAM; // tcp udp is sock_dgram
+
+    addrinfo* res = nullptr; // pointer that shoud fill in addrinfo
+    int rc = getaddrinfo(host.c_str(), nullptr, &hints, &res); // we check what ip is behind eg google.com also it only can use c string that ends in a 0
+    if (rc != 0) { // check if no internet or typo in hostname
+        cerr << "Resolve failed: " << gai_strerror(rc) << "\n";
+        return 1;
+    }
+    sockaddr_in base = *(sockaddr_in*)res->ai_addr; // wskaźnik typu sockaddr* ponieważ wcześniej określiliśmy AF_INET (IPv4) rzutujemy na sockaddr_in* i pobieramy warość do zmiennej base
+    freeaddrinfo(res); // zwalnia pamięć przydzieloną dla struktury res
+    for (uint16_t port: ports) {
+        if (scanPort(base, port, timeoutMs) == PortState::Open) {
+            cout << "port " << port << " is OPEN\n";
+        }
+    }
+    cout << "END OF PORTS\n";
     // for (int port = 1; port <= 1024; ++port) {
     //     if (scanPort(base, port, 1000) == PortState::Open) {
     //         cout << "port " << port << " is OPEN\n";
