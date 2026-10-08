@@ -94,19 +94,7 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // s
 
 
 int main(int argc, char* argv[]) {
-    string portSpec = "1-1024";
-    int timeoutMs = 1000;
-    string host;
-    vector<uint16_t> ports;
 
-    try
-    {
-        for (int i = 1; i < argc; ++i)
-        {
-            string arg = argv[i];
-            
-        }
-    }
     // if (argc != 2)
     // {
     //     cerr << "Usage: " << argv[0] << " <host>\n";
