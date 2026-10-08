@@ -47,7 +47,7 @@ vector<uint16_t> parsePorts(const string& spec) {
         if (lo < 1 || hi > 65535 || lo > hi) {
             throw invalid_argument("Bad port or range: " + token);
         }
-        for (int p = lo; p < hi; ++p) ports.push_back(p);// add to vector each port
+        for (int p = lo; p <= hi; ++p) ports.push_back(p);// add to vector each port
     }
     sort(ports.begin(), ports.end());
     ports.erase(unique(ports.begin(),ports.end()),ports.end());// unique sets an iterator to the first duplicated element than erase deletes to end
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     vector<uint16_t> ports;
 
     try {
-        for (int i = 1 ; i <= argc; ++i) {
+        for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
             if (argument == "-p" || argument == "-t") {
                 if (i + 1 >= argc) {
