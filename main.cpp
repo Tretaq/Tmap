@@ -11,14 +11,18 @@
 #include <vector>
 #include <algorithm>
 #include <complex>
+#include <queue>
 #include <stdexcept>
+#include <mutex>
 using namespace std;
 
 
+
 // g++ main.cpp -o Tmap
+
 enum class PortState { Open, Closed, Filtered, Error };
 
-int toInt(const string& s) { // no copy no changes ig
+int toInt(const string& s) { // no copy no changes igstabilność materi
     size_t used = 0;
     int v = stoi(s, &used);
     if (used != s.size()) throw invalid_argument("not a number: " + s); // jeżeli sie nie równają to znaczy że są śmieci w środku
@@ -92,13 +96,17 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // s
     close(fd);
     return result;
 }
+void worker()
+{
 
+}
 
 int main(int argc, char* argv[]) {
     string portSpec = "1-1024";
     int timeoutMs = 1000;
     string host;
     vector<uint16_t> ports;
+    unsigned int num_threads = 100;
 
     try {
         for (int i = 1 ; i < argc; ++i) {
@@ -127,15 +135,10 @@ int main(int argc, char* argv[]) {
         cerr << "Error: " << e.what() << "\n" << "Usage: " << argv[0] << " -p ports -t timeout_ms <host> \n";
         return 1;
     }
-    // -t = timeout -p = ports
-    // if (argc != 2)
-    // {
-    //     cerr << "Usage: " << argv[0] << " <host>\n";
-    //     return 1;
-    // }
+
     addrinfo hints{}; // addrinfo = to typ który przchowuje teczke informacji o danym hoscie a hnints mówi co my tylko chcemy {} resetuje całą pamięć bez tego będzie miała losowe śmieci z pamięci bo nie bedzie zainicjonowana
     hints.ai_family = AF_INET; // only ipv4
-    hints.ai_socktype = SOCK_STREAM; // tcp udp is sock_dgram
+    hints.ai_socktype = SOCK_STREAM; // only tcp    tcp udp is sock_dgram
 
     addrinfo* res = nullptr; // pointer that shoud fill in addrinfo
     int rc = getaddrinfo(host.c_str(), nullptr, &hints, &res); // we check what ip is behind eg google.com also it only can use c string that ends in a 0
@@ -151,19 +154,31 @@ int main(int argc, char* argv[]) {
         }
     }
     cout << "END OF PORTS\n";
-    // for (int port = 1; port <= 1024; ++port) {
-    //     if (scanPort(base, port, 1000) == PortState::Open) {
-    //         cout << "port " << port << " is OPEN\n";
-    //     }
-    // }
-    //
+
 
     return 0;
 }
 
 
 
+// Executed in   99.30 secs      fish           external
+//    usr time   10.01 millis    0.38 millis    9.64 millis
+//    sys time   15.08 millis    1.16 millis   13.92 millis
 
+// for (int port = 1; port <= 1024; ++port) {
+//     if (scanPort(base, port, 1000) == PortState::Open) {
+//         cout << "port " << port << " is OPEN\n";
+//     }
+// }
+//
+//
+//
+// -t = timeout -p = ports
+// if (argc != 2)
+// {
+//     cerr << "Usage: " << argv[0] << " <host>\n";
+//     return 1;
+// }
 // vector<uint16_t> aa =  parsePorts("10,20,30-40,100-1000");
 // for (int i = 0 ; i < aa.size() ; i++) {
 //     cout << aa[i] << " ";
@@ -204,3 +219,23 @@ int main(int argc, char* argv[]) {
 // } else {
 //     cout << host << ":" << port << " is CLOSED (" << strerror(lastError) << ")\n";
 // }
+// class portQueue
+// {
+//     private: queue<uint16_t> ports;
+//     mutex mtx; // mutex is just like a lock in a toilet only one person(thread) can get in and not everyone to the same toilet
+//
+//     public:
+//     void push(int port)
+//     {
+//         lock_guard<mutex> lock(mtx);// closes the door from the inside (nothing can do anything else)
+//         ports.push(port);
+//     }// automaticly onlocks the door
+//     int pop()
+//     {
+//         lock_guard<mutex> lock(mtx);
+//         if (ports.empty()) return -1;
+//         int port = ports.front();
+//         ports.pop();
+//         return port;
+//     }
+// };
