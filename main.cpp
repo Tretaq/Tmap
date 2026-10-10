@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <mutex>
 #include <thread>
+#include <chrono>
 using namespace std;
 
 
@@ -23,7 +24,10 @@ using namespace std;
 // g++ main.cpp -o Tmap
 
 enum class PortState { Open, Closed, Filtered, Error };
-
+struct ScanResult{
+    PortState state = PortState::Error;
+    string banner;
+};
 int toInt(const string& s) { // no copy no changes igstabilność materi
     size_t used = 0;
     int v = stoi(s, &used);
@@ -60,55 +64,113 @@ vector<uint16_t> parsePorts(const string& spec) {
     return ports;
 }
 
-PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMS) { // sockaddr_in& base host addres
+
+int connectTo(const sockaddr_in& base, uint16_t port , int timeoutMs , PortState& state ) {
+    //
     sockaddr_in addr = base;
     addr.sin_port = htons(port);
+    state = PortState::Error;
+
     int fd = socket(AF_INET, SOCK_STREAM, 0);// AF_INET = IPv4 SOCK_STREAM = TCP 0 = default protocol
     // create a socket
-    if (fd == -1) return PortState::Error;
+    if (fd == -1) return -1;
 
     int flags = fcntl(fd, F_GETFL, 0); // we take the setting (flags) for this socket and in nex we do new ones
     fcntl(fd, F_SETFL, flags | O_NONBLOCK); // normally connect() and recv() stop running program till end of op after O_NONBLOCK they stop so if no conn there is ther will be an error nad prograam can do smth else
     // it returns immidiently and dont wait for handshake
-    PortState result = PortState::Error;
+
 
     int rc = connect(fd, (sockaddr*)&addr, sizeof(addr)); //
 
     if (rc == 0) {
-        result = PortState::Open;
+        state = PortState::Open;
     } else if (errno == ECONNREFUSED) {
-        result = PortState::Closed;
+        state = PortState::Closed;
     } else if ( errno == EINPROGRESS) { // the things before this  are checking mostly on local network where it can con or err instantly
         pollfd pfd{};
         pfd.fd = fd;
         pfd.events = POLLOUT;
 
-        int r = poll(&pfd, 1 , timeoutMS);// check the response
+        int r = poll(&pfd, 1 , timeoutMs);// check the response
+
         if (r == 0) {
-            result = PortState::Filtered;
+            state = PortState::Filtered;
         } else if (r > 0){
             int err = 0;
             socklen_t len = sizeof(err);
             if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0) {
-                if (err == 0) result = PortState::Open;
-                else if (err == ECONNREFUSED) result = PortState::Closed;
+                if (err == 0) state = PortState::Open;
+                else if (err == ECONNREFUSED) state = PortState::Closed;
             }
         }
     }
+    if (state == PortState::Open) return fd;
     close(fd);
-    return result;
-}
-void worker()
-{
+
+    return -1;
 
 }
+string ReadSome(int fd, int timeoutMs) {
+    pollfd pfd{};
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    if (poll(&pfd , 1 , timeoutMs) <= 0) return ""; // sprawdzamy przez sekunde/timeoutMs czy coś poszło
 
+    char buf[512];
+    ssize_t n = recv(fd,buf,sizeof(buf),0);// mówi ile bajtów wzieliśmy z serwera
+    if (n <= 0) return "";
+    return string(buf, n);// zwraca tylko n bajtów
+}
+
+string pickLine(const string& raw) { // just return whats on port
+    if (raw.rfind("HTTP/", 0) == 0) {
+        size_t pos = raw.find("\r\nServer:");
+        if (pos != string::npos) { // czy pos zostało znalezione jezeli jest to sie wykona
+            size_t start = pos + 2;// + 2 bo wtedy zwraca jaki software
+            size_t end = raw.find("\r\n", start);
+            return raw.substr(start,end == string::npos ? string::npos : end - start);
+        }
+    }
+    return raw;
+}
+string cleanBanner(const string& raw) {
+    string out;
+    for (char c : raw) {
+        if (c == '\r' || c == '\n') {
+            break;
+        }
+        out += (c >= 32 && c < 126 ? c : '.');
+    }
+    if (out.size() > 80) out.resize(80); // it cant be that big copium
+    return out;
+}
+string whatService(const string& b) { // string::npos nie znaleziono
+    if (b.rfind("SSH-", 0) == 0) return "SSH";
+    if (b.rfind("HTTP/",0) == 0 || b.rfind("Server:" , 0) == 0) return  "HTTP";
+    if (b.rfind("220",0) == 0) {
+        if (b.find("FTP") != string::npos) return "FTP";
+        if (b.find("SMTP") != string::npos) return "SMTP";
+    }
+    return "";
+}
+
+PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMs) { // sockaddr_in& base host addres
+    PortState state;
+    int k = connectTo(base,port,timeoutMs,state); // create socket
+    if (k != -1) close(k); // close socket if isint opem
+    return state;
+
+}
+string grabBaner() {
+
+}
 int main(int argc, char* argv[]) {
     string portSpec = "1-1024";
     int timeoutMs = 1000;
     string host;
     vector<uint16_t> ports;
     int num_threads = 100;
+    bool grabBanner = false;
 
     try {
         for (int i = 1 ; i < argc; ++i) {
@@ -179,7 +241,6 @@ int main(int argc, char* argv[]) {
             cout << "port " << ports[i] << " is OPEN\n";
         }
     }
-
 
 
 
