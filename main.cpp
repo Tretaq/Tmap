@@ -15,6 +15,7 @@
 #include <queue>
 #include <stdexcept>
 #include <mutex>
+#include <thread>
 using namespace std;
 
 
@@ -107,7 +108,7 @@ int main(int argc, char* argv[]) {
     int timeoutMs = 1000;
     string host;
     vector<uint16_t> ports;
-    unsigned int num_threads = 100;
+    int num_threads = 100;
 
     try {
         for (int i = 1 ; i < argc; ++i) {
@@ -164,17 +165,32 @@ int main(int argc, char* argv[]) {
             results[i] = scanPort(base,ports[i],timeoutMs);
         }
     };
-
-
-
-
-
-
-    for (uint16_t port: ports) {
-        if (scanPort(base, port, timeoutMs) == PortState::Open) {
-            cout << "port " << port << " is OPEN\n";
+    // worker is just what each thread do
+    size_t n = min(static_cast<size_t>(num_threads),ports.size()); // optimalization so we dont need to create more threads then in need
+    vector<thread> threads;
+    for (size_t t = 0; t < n ; ++t) {
+        threads.emplace_back(worker); // create worker
+    }
+    for (auto& th : threads) {
+        th.join();// wait for all to end
+    }
+    for (size_t i = 0; i < ports.size() ; ++i) {
+        if (results[i] == PortState::Open) {
+            cout << "port " << ports[i] << " is OPEN\n";
         }
     }
+
+
+
+
+
+
+
+    // for (uint16_t port: ports) {
+    //     if (scanPort(base, port, timeoutMs) == PortState::Open) {
+    //         cout << "port " << port << " is OPEN\n";
+    //     }
+    // }
     cout << "END OF PORTS\n";
 
 
@@ -182,7 +198,10 @@ int main(int argc, char* argv[]) {
 }
 
 
-
+// Executed in   18.73 secs      fish           external
+//    usr time    4.62 millis    0.00 micros    4.62 millis
+//    sys time    6.89 millis  877.00 micros    6.02 millis
+//
 // Executed in   99.30 secs      fish           external
 //    usr time   10.01 millis    0.38 millis    9.64 millis
 //    sys time   15.08 millis    1.16 millis   13.92 millis
