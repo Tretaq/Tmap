@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <atomic>
 #include <complex>
 #include <queue>
 #include <stdexcept>
@@ -111,13 +112,15 @@ int main(int argc, char* argv[]) {
     try {
         for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
-            if (argument == "-p" || argument == "-t") {
+            if (argument == "-p" || argument == "-t" || argument == "-T") {
                 if (i + 1 >= argc) {
                     throw invalid_argument(argument + " needs a value");
                 }
                 string value = argv[++i];
                 if (argument == "-p") {
                     portSpec = value;
+                }else if (argument == "-T") {
+                    num_threads = toInt(value);
                 }
                 else {
                     timeoutMs = toInt(value);
@@ -129,6 +132,7 @@ int main(int argc, char* argv[]) {
             }
         }
         if (host.empty()) throw invalid_argument("missing host");
+        if (num_threads < 1) throw invalid_argument("number of threads must be at least 1");
         if (timeoutMs < 1) throw invalid_argument("timeout must be at least 1 ms");
         ports = parsePorts(portSpec);
     } catch (const exception& e) {
@@ -148,6 +152,24 @@ int main(int argc, char* argv[]) {
     }
     sockaddr_in base = *(sockaddr_in*)res->ai_addr; // wskaźnik typu sockaddr* ponieważ wcześniej określiliśmy AF_INET (IPv4) rzutujemy na sockaddr_in* i pobieramy warość do zmiennej base
     freeaddrinfo(res); // zwalnia pamięć przydzieloną dla struktury res
+
+    // atomic == single step
+    vector<PortState> results(ports.size(),PortState::Error);
+    atomic<size_t> nextIndex{0};
+
+    auto worker = [&](){
+        while (true) {
+            size_t i = nextIndex.fetch_add(1);// fetch add = 1 operation on cpu
+            if (i >= ports.size()) break;
+            results[i] = scanPort(base,ports[i],timeoutMs);
+        }
+    };
+
+
+
+
+
+
     for (uint16_t port: ports) {
         if (scanPort(base, port, timeoutMs) == PortState::Open) {
             cout << "port " << port << " is OPEN\n";
