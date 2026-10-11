@@ -46,7 +46,7 @@ vector<uint16_t> parsePorts(const string& spec) {
         string token = spec.substr(start, comma - start);// wycina określony fragment i zapisuje w token
         start = comma + 1;
 
-        if (token.empty()) throw invalid_argument("empty entry in port list");// theres no word in token
+        if (token.empty()) throw invalid_argument("Empty entry in port list");// theres no word in token
 
         int lo, hi; // lowest higest port
         size_t dash = token.find('-');//we look for a range :>
@@ -193,10 +193,10 @@ string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) {
             return "Filtered ";
             break;
         default:
-            return "if you see this while using this just install nmap XD";
+            return "If you see this while using this just install nmap XD";
     }
 }
-void print(vector<uint16_t> ports, vector<ScanResult> results , int &openPorts , bool verbose)  {
+void print(vector<uint16_t> ports, vector<ScanResult> results , int &openPorts , bool verbose, auto dur)  {
     for (size_t i = 0 ; i < ports.size() ; ++i) {
         if (results[i].state == PortState::Open) {
             cout << "port " << ports[i] << " is " << StateToSring(results[i].state);
@@ -214,6 +214,8 @@ void print(vector<uint16_t> ports, vector<ScanResult> results , int &openPorts ,
         }
 
     }
+    cout << "Scanned " << ports.size() << " ports in " << dur << " sec, " << openPorts << " open";
+
     return;
 }
 
@@ -234,8 +236,8 @@ int main(int argc, char* argv[]) {
                 grabBanners = true;
             }else if(argument == "-v") {
                 verbose = true;
-            }else if (argument == "-help") {
-                cout << "./Tmap [-p ports] [-t timeout_ms] [-T threads] [-b] [-v] <host>";
+            }else if (argument == "-help" || argument == "-h") {
+                cout << "./Tmap [-p ports] [-t timeout_ms] [-T threads] [-b] [-v] <host>" << "\n(ó﹏ò｡)" ;
                 return 0;
             }else if (argument == "-p" || argument == "-t" || argument == "-T") {
                 if (i + 1 >= argc) {
@@ -256,13 +258,13 @@ int main(int argc, char* argv[]) {
                 host = argument;
             }
         }
-            if (host.empty()) throw invalid_argument("missing host");
-            if (num_threads < 1) throw invalid_argument("number of threads must be at least 1");
-            if (timeoutMs < 1) throw invalid_argument("timeout must be at least 1 ms");
+            if (host.empty()) throw invalid_argument("Missing host" );
+            if (num_threads < 1) throw invalid_argument("Number of threads must be at least 1");
+            if (timeoutMs < 1) throw invalid_argument("Timeout must be at least 1 ms");
             ports = parsePorts(portSpec);
 
     } catch (const exception& e) {
-        cerr << "Error: " << e.what() << "\n" << "Usage: " << argv[0] << " -p ports -t timeout_ms <host> \n";
+        cerr << "Error: " << e.what() << "\n" << "Usage: " << argv[0] << " [-p ports] [-t timeout_ms] [-T threads] [-b] [-v] <host> \n";
         return 1;
     }
 
@@ -323,22 +325,12 @@ int main(int argc, char* argv[]) {
     //         continue;
     //     }
     // }
-    print(ports , results , openPorts , verbose);
-    cout << "Scanned " << ports.size() << " ports in " << dur << " sec, " << openPorts << " open";
-
-
-
-
-
-
+    print(ports , results , openPorts , verbose , dur);
     // for (uint16_t port: ports) {
     //     if (scanPort(base, port, timeoutMs) == PortState::Open) {
     //         cout << "port " << port << " is OPEN\n";
     //     }
     // }
-
-
-
     return 0;
 }
 

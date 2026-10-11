@@ -2,6 +2,8 @@
 
 Tmap is a multithreaded port scaner written in C++17 for Linux. 
 
+It isn't fully done yet BUT wait for updates!
+
 ## Demo
 
 https://www.youtube.com/watch?v=MemjxGfXOPI
@@ -58,6 +60,8 @@ Scanned 3 ports in 0.344559 sec, 2 open
 
 ## Legal note 
 
-Don't be a jerk and hammer shit.
+Don't be a jerk and hammer shit. 
+
 Also only scan ports you have permission to.
+
 ![alt text](image.png)
