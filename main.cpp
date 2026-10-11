@@ -123,7 +123,7 @@ string ReadSome(int fd, int timeoutMs) {
 }
 
 string pickLine(const string& raw) { // just return whats on port
-    if (raw.rfind("HTTP/", 0) == 0) {
+    if (raw.rfind("HTTP/", 0) == 0) { //
         size_t pos = raw.find("\r\nServer:");
         if (pos != string::npos) { // czy pos zostało znalezione jezeli jest to sie wykona
             size_t start = pos + 2;// + 2 bo wtedy zwraca jaki software
@@ -141,7 +141,7 @@ string cleanBanner(const string& raw) {
         }
         out += (c >= 32 && c < 126 ? c : '.');
     }
-    if (out.size() > 80) out.resize(80); // it cant be that big copium
+    if (out.size() > 80) out.resize(80); // it cant be that big copium yes it can
     return out;
 }
 string whatService(const string& b) { // string::npos nie znaleziono
@@ -161,7 +161,19 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMs) { // s
     return state;
 
 }
-string grabBaner() {
+string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) { // does it work??????
+    PortState state;
+    int fd = connectTo(base, port , timeoutMs , state);
+    if (fd == -1) return "";
+
+    string raw = ReadSome(fd,400);
+    if (raw.empty()) {
+        const char* probe = "HEAD / HTTP/1.0\r\n\r\n";
+        send(fd, probe, strlen(probe), MSG_NOSIGNAL);// wylij coś do socketa
+        raw = ReadSome(fd, 400);
+    }
+    close(fd);
+    return cleanBanner(pickLine(raw));// pick line for http sending clean banner for destroing all leftover \r\n
 
 }
 int main(int argc, char* argv[]) {
@@ -170,12 +182,14 @@ int main(int argc, char* argv[]) {
     string host;
     vector<uint16_t> ports;
     int num_threads = 100;
-    bool grabBanner = false;
+    bool grabBanners = false;
 
     try {
         for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
-            if (argument == "-p" || argument == "-t" || argument == "-T") {
+            if (argument == "-b") {
+                grabBanners = true;
+            }else if (argument == "-p" || argument == "-t" || argument == "-T") {
                 if (i + 1 >= argc) {
                     throw invalid_argument(argument + " needs a value");
                 }
@@ -217,14 +231,17 @@ int main(int argc, char* argv[]) {
     freeaddrinfo(res); // zwalnia pamięć przydzieloną dla struktury res
 
     // atomic == single step
-    vector<PortState> results(ports.size(),PortState::Error);
+    vector<ScanResult> results(ports.size());
     atomic<size_t> nextIndex{0};
 
     auto worker = [&](){
         while (true) {
             size_t i = nextIndex.fetch_add(1);// fetch add = 1 operation on cpu
             if (i >= ports.size()) break;
-            results[i] = scanPort(base,ports[i],timeoutMs);
+            results[i].state = scanPort(base,ports[i],timeoutMs);
+            if (grabBanners && results[i].state == PortState::Open) {
+                results[i].banner = grabBanner(base, ports[i], timeoutMs);// it dosnt work
+            }
         }
     };
     // worker is just what each thread do
@@ -237,7 +254,7 @@ int main(int argc, char* argv[]) {
         th.join();// wait for all to end
     }
     for (size_t i = 0; i < ports.size() ; ++i) {
-        if (results[i] == PortState::Open) {
+        if (results[i].state == PortState::Open) {
             cout << "port " << ports[i] << " is OPEN\n";
         }
     }
