@@ -5,8 +5,8 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <cstdint>
-#include <fcntl.h>// flags F_GETFL, F_SETFL, O_NONBLOCK
-#include <poll.h>// pollfd
+#include <fcntl.h>
+#include <poll.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -179,16 +179,16 @@ string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) {
  string StateToSring(PortState state) {
     switch (state) {
         case PortState::Open:
-            return "Open";
+            return "Open ";
             break;
         case PortState::Closed:
-            return  "Close";
+            return  "Close ";
             break;
         case PortState::Error:
-            return "Error";
+            return "Error ";
             break;
         case PortState::Filtered:
-            return "Filtered";
+            return "Filtered ";
             break;
         default:
             return "if you see this while using this just install nmap XD";
