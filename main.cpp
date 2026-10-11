@@ -226,6 +226,7 @@ int main(int argc, char* argv[]) {
     bool grabBanners = false;
     int openPorts = 0;
     bool verbose = false;
+
     try {
         for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
@@ -233,10 +234,13 @@ int main(int argc, char* argv[]) {
                 grabBanners = true;
             }else if(argument == "-v") {
                 verbose = true;
+            }else if (argument == "-help") {
+                cout << "./Tmap [-p ports] [-t timeout_ms] [-T threads] [-b] [-v] <host>";
+                return 0;
             }else if (argument == "-p" || argument == "-t" || argument == "-T") {
                 if (i + 1 >= argc) {
                     throw invalid_argument(argument + " needs a value");
-                }
+                }// END
                 string value = argv[++i];
                 if (argument == "-p") {
                     portSpec = value;
