@@ -28,6 +28,8 @@ struct ScanResult{
     PortState state = PortState::Error;
     string banner;
 };
+
+
 int toInt(const string& s) { // no copy no changes igstabilność materi
     size_t used = 0;
     int v = stoi(s, &used);
@@ -194,6 +196,26 @@ string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) {
             return "if you see this while using this just install nmap XD";
     }
 }
+void print(vector<uint16_t> ports, vector<ScanResult> results , int &openPorts , bool verbose)  {
+    for (size_t i = 0 ; i < ports.size() ; ++i) {
+        if (results[i].state == PortState::Open) {
+            cout << "port " << ports[i] << " is " << StateToSring(results[i].state);
+            openPorts++;
+            const string& b = results[i].banner;
+            if (!b.empty()) {
+                string svc = whatService(b);
+                cout << (svc.empty() ? "?" : svc) << " " << b;
+            }
+            cout << "\n";
+        }else if (verbose) {
+            cout << "port " << ports[i] << " is " << StateToSring(results[i].state) << "\n";
+        } else {
+            continue;
+        }
+
+    }
+    return;
+}
 
 int main(int argc, char* argv[]) {
     string portSpec = "1-1024";
@@ -280,25 +302,25 @@ int main(int argc, char* argv[]) {
     auto end = chrono::steady_clock::now();
     auto dur = chrono::duration<double>(end - start).count();
 
-    for (size_t i = 0; i < ports.size() ; ++i) {
-
-        if (results[i].state == PortState::Open) {
-            cout << "port " << ports[i] <<  " is " << StateToSring(results[i].state);
-            openPorts++;
-            const string& b = results[i].banner;
-            if (!b.empty()) {
-                string svc =  whatService(b);
-                cout << (svc.empty() ? "?" : svc) << " " << b;
-            }
-            cout << "\n";
-        }
-        else if (verbose) {
-            cout << "port " << ports[i] << " is " << StateToSring(results[i].state) << "\n";
-        }else {
-            continue;
-        }
-    }
-    cout << "Scanned " << ports.size() << " ports in " << dur << "sec, " << openPorts << " open";
+    // for (size_t i = 0; i < ports.size() ; ++i) {
+    //     if (results[i].state == PortState::Open) {
+    //         cout << "port " << ports[i] <<  " is " << StateToSring(results[i].state);
+    //         openPorts++;
+    //         const string& b = results[i].banner;
+    //         if (!b.empty()) {
+    //             string svc =  whatService(b);
+    //             cout << (svc.empty() ? "?" : svc) << " " << b;
+    //         }
+    //         cout << "\n";
+    //     }
+    //     else if (verbose) {
+    //         cout << "port " << ports[i] << " is " << StateToSring(results[i].state) << "\n";
+    //     }else {
+    //         continue;
+    //     }
+    // }
+    print(ports , results , openPorts , verbose);
+    cout << "Scanned " << ports.size() << " ports in " << dur << " sec, " << openPorts << " open";
 
 
 
