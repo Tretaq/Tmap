@@ -254,9 +254,14 @@ int main(int argc, char* argv[]) {
         th.join();// wait for all to end
     }
     for (size_t i = 0; i < ports.size() ; ++i) {
-        if (results[i].state == PortState::Open) {
-            cout << "port " << ports[i] << " is OPEN\n";
+        if (results[i].state != PortState::Open) continue;
+        cout << "port " << ports[i] << " is OPEN";
+        const string& b = results[i].banner;
+        if (!b.empty()) {
+            string svc =  whatService(b);
+            cout << (svc.empty() ? "?" : svc) << " " << b;
         }
+        cout << "\n";
     }
 
 
