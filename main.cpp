@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
     vector<uint16_t> ports;
     int num_threads = 100;
     bool grabBanners = false;
-
+    int openPorts = 0;
     try {
         for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
@@ -247,15 +247,20 @@ int main(int argc, char* argv[]) {
     // worker is just what each thread do
     size_t n = min(static_cast<size_t>(num_threads),ports.size()); // optimalization so we dont need to create more threads then in need
     vector<thread> threads;
+    auto start = chrono::steady_clock::now();
     for (size_t t = 0; t < n ; ++t) {
         threads.emplace_back(worker); // create worker
     }
     for (auto& th : threads) {
         th.join();// wait for all to end
     }
+    auto end = chrono::steady_clock::now();
+    auto dur = chrono::duration<double>(end - start).count();
+
     for (size_t i = 0; i < ports.size() ; ++i) {
         if (results[i].state != PortState::Open) continue;
         cout << "port " << ports[i] << " is OPEN";
+        openPorts++;
         const string& b = results[i].banner;
         if (!b.empty()) {
             string svc =  whatService(b);
@@ -263,6 +268,7 @@ int main(int argc, char* argv[]) {
         }
         cout << "\n";
     }
+    cout << "Scanned " << ports.size() << " ports in " << dur << " s, " << openPorts << " open";
 
 
 
@@ -274,7 +280,7 @@ int main(int argc, char* argv[]) {
     //         cout << "port " << port << " is OPEN\n";
     //     }
     // }
-    cout << "END OF PORTS\n";
+
 
 
     return 0;
