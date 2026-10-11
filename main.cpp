@@ -176,6 +176,25 @@ string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) {
     return cleanBanner(pickLine(raw));// pick line for http sending clean banner for destroing all leftover \r\n
 
 }
+ string StateToSring(PortState state) {
+    switch (state) {
+        case PortState::Open:
+            return "Open";
+            break;
+        case PortState::Closed:
+            return  "Close";
+            break;
+        case PortState::Error:
+            return "Error";
+            break;
+        case PortState::Filtered:
+            return "Filtered";
+            break;
+        default:
+            return "if you see this while using this just install nmap XD";
+    }
+}
+
 int main(int argc, char* argv[]) {
     string portSpec = "1-1024";
     int timeoutMs = 1000;
@@ -184,11 +203,14 @@ int main(int argc, char* argv[]) {
     int num_threads = 100;
     bool grabBanners = false;
     int openPorts = 0;
+    bool verbose = false;
     try {
         for (int i = 1 ; i < argc; ++i) {
             string argument = argv[i];
             if (argument == "-b") {
                 grabBanners = true;
+            }else if(argument == "-v") {
+                verbose = true;
             }else if (argument == "-p" || argument == "-t" || argument == "-T") {
                 if (i + 1 >= argc) {
                     throw invalid_argument(argument + " needs a value");
@@ -196,7 +218,7 @@ int main(int argc, char* argv[]) {
                 string value = argv[++i];
                 if (argument == "-p") {
                     portSpec = value;
-                }else if (argument == "-T") {
+                } else if (argument == "-T") {
                     num_threads = toInt(value);
                 }
                 else {
@@ -208,10 +230,11 @@ int main(int argc, char* argv[]) {
                 host = argument;
             }
         }
-        if (host.empty()) throw invalid_argument("missing host");
-        if (num_threads < 1) throw invalid_argument("number of threads must be at least 1");
-        if (timeoutMs < 1) throw invalid_argument("timeout must be at least 1 ms");
-        ports = parsePorts(portSpec);
+            if (host.empty()) throw invalid_argument("missing host");
+            if (num_threads < 1) throw invalid_argument("number of threads must be at least 1");
+            if (timeoutMs < 1) throw invalid_argument("timeout must be at least 1 ms");
+            ports = parsePorts(portSpec);
+
     } catch (const exception& e) {
         cerr << "Error: " << e.what() << "\n" << "Usage: " << argv[0] << " -p ports -t timeout_ms <host> \n";
         return 1;
@@ -258,17 +281,24 @@ int main(int argc, char* argv[]) {
     auto dur = chrono::duration<double>(end - start).count();
 
     for (size_t i = 0; i < ports.size() ; ++i) {
-        if (results[i].state != PortState::Open) continue;
-        cout << "port " << ports[i] << " is OPEN";
-        openPorts++;
-        const string& b = results[i].banner;
-        if (!b.empty()) {
-            string svc =  whatService(b);
-            cout << (svc.empty() ? "?" : svc) << " " << b;
+
+        if (results[i].state == PortState::Open) {
+            cout << "port " << ports[i] <<  " is " << StateToSring(results[i].state);
+            openPorts++;
+            const string& b = results[i].banner;
+            if (!b.empty()) {
+                string svc =  whatService(b);
+                cout << (svc.empty() ? "?" : svc) << " " << b;
+            }
+            cout << "\n";
         }
-        cout << "\n";
+        else if (verbose) {
+            cout << "port " << ports[i] << " is " << StateToSring(results[i].state) << "\n";
+        }else {
+            continue;
+        }
     }
-    cout << "Scanned " << ports.size() << " ports in " << dur << " s, " << openPorts << " open";
+    cout << "Scanned " << ports.size() << " ports in " << dur << "sec, " << openPorts << " open";
 
 
 
@@ -368,4 +398,4 @@ int main(int argc, char* argv[]) {
 //         ports.pop();
 //         return port;
 //     }
-// };
+// }
