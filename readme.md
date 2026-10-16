@@ -18,7 +18,8 @@ https://www.youtube.com/watch?v=MemjxGfXOPI
 
 ## Build
 
-You need C++17 compiler and Cmake 
+You need C++17 compiler and Cmake
+Requires Linux x86_64 with glibc 2.38 or newer (Arch, Fedora 39+, Ubuntu 24.04+).
 
 ```bash
 git clone https://github.com/Tretaq/Tmap

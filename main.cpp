@@ -163,7 +163,7 @@ PortState scanPort(const sockaddr_in& base, uint16_t port, int timeoutMs) { // s
     return state;
 
 }
-string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) { // does it work??????
+string grabBanner(const sockaddr_in& base, uint16_t port , uint16_t timeoutMs) {
     PortState state;
     int fd = connectTo(base, port , timeoutMs , state);
     if (fd == -1) return "";
@@ -214,7 +214,7 @@ void print(vector<uint16_t> ports, vector<ScanResult> results , int &openPorts ,
         }
 
     }
-    cout << "Scanned " << ports.size() << " ports in " << dur << " sec, " << openPorts << " open";
+    cout << "Scanned " << ports.size() << " ports in " << dur << " sec, " << openPorts << " open\n";
 
     return;
 }
